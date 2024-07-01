@@ -1,0 +1,47 @@
+<interface name="com.deepin.XSettings1">
+    <method name="GetColor">
+        <arg name="prop" type="s" direction="in"></arg>
+        <arg name="outArg0" type="aq" direction="out"></arg>
+		<annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="ArrayOfColor"/>
+    </method>
+    <method name="GetInteger">
+        <arg name="prop" type="s" direction="in"></arg>
+        <arg name="outArg0" type="i" direction="out"></arg>
+    </method>
+    <method name="GetScaleFactor">
+        <arg name="outArg0" type="d" direction="out"></arg>
+    </method>
+    <method name="GetScreenScaleFactors">
+        <arg name="outArg0" type="a{sd}" direction="out"></arg>
+		<annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="ScaleFactors"/>
+    </method>
+    <method name="GetString">
+        <arg name="prop" type="s" direction="in"></arg>
+        <arg name="outArg0" type="s" direction="out"></arg>
+    </method>
+    <method name="ListProps">
+        <arg name="outArg0" type="s" direction="out"></arg>
+    </method>
+    <method name="SetColor">
+        <arg name="prop" type="s" direction="in"></arg>
+        <arg name="v" type="aq" direction="in"></arg>
+		<annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="ArrayOfColor"/>
+    </method>
+    <method name="SetInteger">
+        <arg name="prop" type="s" direction="in"></arg>
+        <arg name="v" type="i" direction="in"></arg>
+    </method>
+    <method name="SetScaleFactor">
+        <arg name="scale" type="d" direction="in"></arg>
+    </method>
+    <method name="SetScreenScaleFactors">
+        <arg name="factors" type="a{sd}" direction="in"></arg>
+		<annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="ScaleFactors"/>
+    </method>
+    <method name="SetString">
+        <arg name="prop" type="s" direction="in"></arg>
+        <arg name="v" type="s" direction="in"></arg>
+    </method>
+    <signal name="SetScaleFactorStarted"></signal>
+    <signal name="SetScaleFactorDone"></signal>
+</interface>

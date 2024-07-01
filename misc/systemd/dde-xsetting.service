@@ -1,0 +1,7 @@
+[Unit]
+Description=Deepin Xsetting service
+
+[Service]
+Type=DBus
+BusName=org.deepin.daemon.XSettings1
+ExecStart=/usr/bin/dde-xsetting
