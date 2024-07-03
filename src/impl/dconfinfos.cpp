@@ -1,13 +1,12 @@
 #include "dconfinfos.h"
+#include <QDebug>
 
-DconfInfo::DconfInfo(QString dconfKey,QString xsKey,DconfValueType dconfType, int xsType)
+DconfInfo::DconfInfo(QString dconfKey,QString xsKey,DconfValueType dconfType, int8_t xsType)
     :dconfKey(dconfKey)
     ,dconfType(dconfType)
     ,xsKey(xsKey)
     ,xsType(xsType)
 {
-    convertGsToXs = std::bind(&DconfInfo::convertStrToColor,this,std::placeholders::_1);
-    setGsToXsFunc(convertGsToXs);
 }
 
 void DconfInfo::setGsToXsFunc(ConverFun func)
@@ -31,15 +30,6 @@ XsValue DconfInfo::getValue(const DTK_CORE_NAMESPACE::DConfig& dconf)
     bool bOk=false;
     switch (dconfType) {
     case typeOfBool:
-        bool valBool;
-        valBool = dconf.value(dconfKey).toBool();
-        if(valBool)
-        {
-            retVal=1;
-        }else {
-            retVal=0;
-        }
-        break;
     case typeOfInt:
         int valInt;
         valInt = dconf.value(dconfKey).toInt(&bOk);
@@ -53,13 +43,12 @@ XsValue DconfInfo::getValue(const DTK_CORE_NAMESPACE::DConfig& dconf)
         retVal = dconf.value(dconfKey).toString();
         break;
     case typeOfDoublue:
-        int valDouble;
+        double valDouble;
         valDouble = dconf.value(dconfKey).toDouble(&bOk);
-        if(!bOk)
-        {
+        if (!bOk) {
             return  retVal;
         }
-        retVal=valDouble;
+        retVal = valDouble;
         break;
     default:
         return retVal;
@@ -75,7 +64,10 @@ XsValue DconfInfo::getValue(const DTK_CORE_NAMESPACE::DConfig& dconf)
 
 bool DconfInfo::setValue(DTK_CORE_NAMESPACE::DConfig& dconf,XsValue& value)
 {
-    XsValue converValue;
+    XsValue converValue = value;
+    int* valInt ;
+    QString* valString ;
+    double* valDouble ;
     if(convertXsToGs)
     {
          converValue = convertXsToGs(value);
@@ -83,7 +75,6 @@ bool DconfInfo::setValue(DTK_CORE_NAMESPACE::DConfig& dconf,XsValue& value)
 
     switch (dconfType) {
     case typeOfBool:
-        int* valInt;
         valInt = std::get_if<int>(&converValue);
         if(valInt == nullptr)
         {
@@ -103,11 +94,9 @@ bool DconfInfo::setValue(DTK_CORE_NAMESPACE::DConfig& dconf,XsValue& value)
         {
             return false;
         }
-
         dconf.setValue(dconfKey,*valInt);
         break;
     case typeOfString:
-        QString* valString;
         valString = std::get_if<QString>(&converValue);
         if(valString == nullptr)
         {
@@ -117,7 +106,6 @@ bool DconfInfo::setValue(DTK_CORE_NAMESPACE::DConfig& dconf,XsValue& value)
         dconf.setValue(dconfKey,*valString);
         break;
     case typeOfDoublue:
-        double* valDouble;
         valDouble = std::get_if<double>(&converValue);
         if(valDouble == nullptr)
         {
@@ -154,13 +142,11 @@ XsValue DconfInfo::convertStrToDouble(XsValue& value)
 
 XsValue DconfInfo::convertDoubleToStr(XsValue& value)
 {
-
     double* tempValue = std::get_if<double>(&value);
     if(tempValue == nullptr)
     {
         return XsValue();
     }
-
     return  QString::number(*tempValue);
 }
 
@@ -172,18 +158,15 @@ XsValue DconfInfo::convertStrToColor(XsValue& value)
     {
         return XsValue();
     }
-
     QStringList valueArray = tempValue->split(",");
     if(valueArray.length() != 4)
     {
         return valueInfo;
     }
 
-    valueInfo.red = (uint16_t)((double)(valueArray[0].toShort()) / double(UINT16_MAX)) * double(UINT8_MAX);
-    valueInfo.green = (uint16_t)((double)(valueArray[0].toShort()) / double(UINT16_MAX)) * double(UINT8_MAX);
-    valueInfo.blue = (uint16_t)((double)(valueArray[0].toShort()) / double(UINT16_MAX)) * double(UINT8_MAX);
-    valueInfo.alpha = (uint16_t)((double)(valueArray[0].toShort()) / double(UINT16_MAX)) * double(UINT8_MAX);
-
+    for (int i = 0; i < colorSize; i++){
+        valueInfo[i] = (uint16_t)((valueArray[i].toDouble()) / double(UINT16_MAX) * double(UINT8_MAX));
+    }
     return valueInfo;
 }
 
@@ -196,12 +179,9 @@ XsValue DconfInfo::convertColorToStr(XsValue& value)
     }
 
     uint16_t arr[4];
-
-    arr[0] = (uint16_t)((double)(tempValue->red) / (double)(UINT8_MAX) * (double)(UINT16_MAX));
-    arr[1] = (uint16_t)((double)(tempValue->green) / (double)(UINT8_MAX) * (double)(UINT16_MAX));
-    arr[2] = (uint16_t)((double)(tempValue->blue) / (double)(UINT8_MAX) * (double)(UINT16_MAX));
-    arr[3] = (uint16_t)((double)(tempValue->alpha) / (double)(UINT8_MAX) * (double)(UINT16_MAX));
-
+    for (int i = 0; i < colorSize; i++){
+        arr[i] = (uint16_t)((double)((*tempValue)[i]) / (double)(UINT8_MAX) * (double)(UINT16_MAX));
+    }
     return QString::asprintf("%d,%d,%d,%d",arr[0],arr[1],arr[2],arr[3]);
 }
 
@@ -215,7 +195,12 @@ QString DconfInfo::getXsetKey()
     return xsKey;
 }
 
-uint8_t DconfInfo::getKeySType()
+int8_t DconfInfo::getKeyDType()
+{
+    return dconfType;
+}
+
+int8_t DconfInfo::getKeySType()
 {
     if(xsType != HeadTypeInvalid)
     {
@@ -230,63 +215,63 @@ uint8_t DconfInfo::getKeySType()
 }
 
 DconfInfos::DconfInfos()
-    :dconfArray{QSharedPointer<DconfInfo>(new DconfInfo("theme-name","Net/ThemeName",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("icon-theme-name", "Net/IconThemeName",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("fallback-icon-theme", "Net/FallbackIconTheme",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("sound-theme-name", "Net/SoundThemeName",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-theme-name", "Gtk/ThemeName",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-cursor-theme-name", "Gtk/CursorThemeName",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-font-name", "Gtk/FontName",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-key-theme-name", "Gtk/KeyThemeName",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-color-palette", "Gtk/ColorPalette",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-toolbar-style", "Gtk/ToolbarStyle",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-toolbar-icon-size", "Gtk/ToolbarIconSize",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-color-scheme", "Gtk/ColorScheme",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-im-preedit-style", "Gtk/IMPreeditStyle",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-im-status-style", "Gtk/IMStatusStyle",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-im-module", "Gtk/IMModule",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-modules", "Gtk/Modules",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-menubar-accel", "Gtk/MenuBarAccel",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("xft-hintstyle", "Xft/HintStyle",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("xft-rgba", "Xft/RGBA",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("cursor-blink-time", "Net/CursorBlinkTime",typeOfInt))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-cursor-blink-timeout", "Net/CursorBlinkTimeout",typeOfInt))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("double-click-time", "Net/DoubleClickTime",typeOfInt))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("double-click-distance", "Net/DoubleClickDistance",typeOfInt))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("dnd-drag-threshold", "Net/DndDragThreshold",typeOfInt))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-cursor-theme-size", "Gtk/CursorThemeSize",typeOfInt))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-timeout-initial", "Gtk/TimeoutInitial",typeOfInt))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-timeout-repeat", "Gtk/TimeoutRepeat",typeOfInt))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-recent-files-max-age", "Gtk/RecentFilesMaxAge",typeOfInt))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("xft-dpi", "Xft/DPI",typeOfInt))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("cursor-blink", "Net/CursorBlink",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("enable-event-sounds", "Net/EnableEventSounds",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("enable-input-feedback-sounds", "Net/EnableInputFeedbackSounds",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-can-change-accels", "Gtk/CanChangeAccels",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-menu-images", "Gtk/MenuImages",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-button-images", "Gtk/ButtonImages",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-enable-animations", "Gtk/EnableAnimations",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-show-input-method-menu", "Gtk/ShowInputMethodMenu",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-show-unicode-menu", "Gtk/ShowUnicodeMenu",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-auto-mnemonics", "Gtk/AutoMnemonics",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-recent-files-enabled", "Gtk/RecentFilesEnabled",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("gtk-shell-shows-app-menu", "Gtk/ShellShowsAppMenu",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("xft-antialias", "Xft/Antialias",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("xft-hinting", "Xft/Hinting",typeOfBool))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("qt-font-name", "Qt/FontName",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("qt-mono-font-name", "Qt/MonoFontName",typeOfString))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("dtk-window-radius", "DTK/WindowRadius",typeOfInt))
-                ,QSharedPointer<DconfInfo>(new DconfInfo("primary-monitor-name", "Gdk/PrimaryMonitorName",typeOfString))}
+    :dconfArray{QSharedPointer<DconfInfo>(new DconfInfo("Theme_Name","Net/ThemeName",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Icon_Theme_Name", "Net/IconThemeName",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Fallback_Icon_Theme", "Net/FallbackIconTheme",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Sound_Theme_Name", "Net/SoundThemeName",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Theme_Name", "Gtk/ThemeName",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Cursor_Theme_Name", "Gtk/CursorThemeName",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Font_Name", "Gtk/FontName",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Key_Theme_Name", "Gtk/KeyThemeName",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Color_Palette", "Gtk/ColorPalette",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Toolbar_Style", "Gtk/ToolbarStyle",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Toolbar_Icon_Size", "Gtk/ToolbarIconSize",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Tolor_Scheme", "Gtk/ColorScheme",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Im_Preedit_Style", "Gtk/IMPreeditStyle",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Im_Status_Style", "Gtk/IMStatusStyle",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Im_Module", "Gtk/IMModule",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Modules", "Gtk/Modules",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Menubar_Accel", "Gtk/MenuBarAccel",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Xft_Hintstyle", "Xft/HintStyle",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Xft_Rgba", "Xft/RGBA",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Cursor_Blink_Time", "Net/CursorBlinkTime",typeOfInt))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Cursor_Blink_Timeout", "Net/CursorBlinkTimeout",typeOfInt))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Double_Click_Time", "Net/DoubleClickTime",typeOfInt))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Double_Click_Distance", "Net/DoubleClickDistance",typeOfInt))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Dnd_Drag_Threshold", "Net/DndDragThreshold",typeOfInt))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Cursor_Theme_Size", "Gtk/CursorThemeSize",typeOfInt))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Timeout_Initial", "Gtk/TimeoutInitial",typeOfInt))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Timeout_Repeat", "Gtk/TimeoutRepeat",typeOfInt))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Recent_Files_Max_Age", "Gtk/RecentFilesMaxAge",typeOfInt))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Xft_Dpi", "Xft/DPI",typeOfInt))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Qursor_Blink", "Net/CursorBlink",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Enable_Event_Sounds", "Net/EnableEventSounds",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Enable_Input_Feedback_Sounds", "Net/EnableInputFeedbackSounds",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Can_Change_Accels", "Gtk/CanChangeAccels",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Menu_Images", "Gtk/MenuImages",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Button_Images", "Gtk/ButtonImages",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Enable_Animations", "Gtk/EnableAnimations",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Show_Input_Method_Menu", "Gtk/ShowInputMethodMenu",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Show_Unicode_Menu", "Gtk/ShowUnicodeMenu",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Auto_Mnemonics", "Gtk/AutoMnemonics",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Recent_Files_Enabled", "Gtk/RecentFilesEnabled",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Gtk_Shell_Shows_App_Menu", "Gtk/ShellShowsAppMenu",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Xft_Antialias", "Xft/Antialias",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Xft_Hinting", "Xft/Hinting",typeOfBool))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Qt_Font_Name", "Qt/FontName",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Qt_Mono_Font_Name", "Qt/MonoFontName",typeOfString))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Dtk_Window_Radius", "DTK/WindowRadius",typeOfInt))
+                ,QSharedPointer<DconfInfo>(new DconfInfo("Primary_Monitor_Name", "Gdk/PrimaryMonitorName",typeOfString))}
 
 {
-     QSharedPointer<DconfInfo>  qtActiveColor(new DconfInfo("qt-active-color", "Qt/ActiveColor",typeOfString,HeadTypeColor));
+     QSharedPointer<DconfInfo>  qtActiveColor(new DconfInfo("Qt_Active_Color", "Qt/ActiveColor",typeOfString,HeadTypeColor));
      qtActiveColor->setGsToXsFunc(std::bind(&DconfInfo::convertStrToColor,qtActiveColor.get(),std::placeholders::_1));
      qtActiveColor->setXsToGsFunc(std::bind(&DconfInfo::convertColorToStr,qtActiveColor.get(),std::placeholders::_1));
      dconfArray.push_back(qtActiveColor);
 
-     QSharedPointer<DconfInfo> qtFontPoint(new DconfInfo("qt-font-point-size", "Qt/FontPointSize",typeOfDoublue));
-     qtActiveColor->setGsToXsFunc(std::bind(&DconfInfo::convertDoubleToStr,qtFontPoint.get(),std::placeholders::_1));
-     qtActiveColor->setXsToGsFunc(std::bind(&DconfInfo::convertStrToDouble,qtFontPoint.get(),std::placeholders::_1));
+     QSharedPointer<DconfInfo> qtFontPoint(new DconfInfo("Qt_Font_Point_Size", "Qt/FontPointSize",typeOfDoublue));
+     qtFontPoint->setGsToXsFunc(std::bind(&DconfInfo::convertDoubleToStr,qtFontPoint.get(),std::placeholders::_1));
+     qtFontPoint->setXsToGsFunc(std::bind(&DconfInfo::convertStrToDouble,qtFontPoint.get(),std::placeholders::_1));
      dconfArray.push_back(qtFontPoint);
 }
 

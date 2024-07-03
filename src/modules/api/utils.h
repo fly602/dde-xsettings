@@ -21,11 +21,12 @@ public:
             return false;
         }
 
-        QByteArray tempArray(array,size);
-        std::reverse(tempArray.begin(),tempArray.end());
-        QDataStream ds(tempArray);
-        // Since the size you're trying to read appears to be 2 bytes
-        ds >> value;
+        char* p = reinterpret_cast<char*>(const_cast<Value*>(&value));
+        // 将大端格式的数据转换为小端格式并存储到 value 中
+        for (int i = 0; i < size; i++)
+        {
+            p[i] = array[size - 1 - i];
+        }
         array = array.remove(0,size);
 
         return true;
@@ -34,7 +35,7 @@ public:
     template<typename Value>
     static  bool writeInteger(QByteArray& array, const Value& value)
     {
-        int size = sizeof (Value)/8;
+        int size = sizeof (Value);
         char* p = reinterpret_cast<char*>(const_cast<Value*>(&value));
 
         for(int i= size-1;i >= 0;i--)

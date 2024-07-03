@@ -4,6 +4,7 @@
 #include <cstring>
 #include <string>
 #include <iostream>
+#include <QDebug>
 
 KeyFile::KeyFile(char separtor)
  : modified(false)
@@ -73,23 +74,18 @@ void KeyFile::setKey(const QString &section, const QString &key, const QString &
 
 bool KeyFile::deleteKey(const QString &section, const QString &key)
 {
-    QMap<QString, KeyMap>::iterator mainIter=mainKeyMap.begin();
-    while(mainIter != mainKeyMap.end())
+    if (mainKeyMap.find(section) == mainKeyMap.end())
     {
-        QMap<QString, QString>::iterator iter = mainIter.value().find(key);
-        if(iter != mainIter->end())
-        {
-            mainIter.value().erase(iter);
-            return true;
-        }
+        return false;
     }
-
+    mainKeyMap[section].remove(key);
     return false;
 }
 
 // 写入文件
 bool KeyFile::saveToFile(const QString &filePath)
 {
+    qDebug() << filePath;
     QFile file(filePath);
     if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
     {
@@ -99,9 +95,11 @@ bool KeyFile::saveToFile(const QString &filePath)
     for (const auto &im : mainKeyMap.toStdMap()) {
         const auto &keyMap = im.second;
         QString section = "[" + im.first + "]\n";
+        qDebug() << section;
         file.write(section.toLatin1());
         for (const auto &ik : keyMap.toStdMap()) {
             QString kv = ik.first + "=" + ik.second + "\n";
+            qDebug() << kv;
             file.write(kv.toLatin1());
         }
     }
@@ -183,15 +181,16 @@ QStringList KeyFile::getMainKeys()
 
 void KeyFile::print()
 {
-    std::cout << "sectionMap: " << std::endl;
+    qDebug() << "sectionMap: ";
     for (auto sectionMap : mainKeyMap.toStdMap()) {
 
         KeyMap keyMap = sectionMap.second;
-
+        qDebug() << sectionMap.first;
         for (auto iter : keyMap.toStdMap()) {
-
+            qDebug() << iter.first << "=" << iter.second;
         }
 
-        std::cout << std::endl;
+
     }
+    qDebug() << "sectionMap: end";
 }

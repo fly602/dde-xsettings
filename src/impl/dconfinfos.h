@@ -13,7 +13,7 @@ class DconfInfo : public QObject
     typedef     std::function<XsValue (XsValue& )> ConverFun;
 
 public:
-    DconfInfo(QString dconfKey,QString xsKey,DconfValueType dconfType, int xsType=0);
+    DconfInfo(QString dconfKey,QString xsKey,DconfValueType dconfType, int8_t xsType=HeadTypeInvalid);
     void setGsToXsFunc(ConverFun func);
     void setXsToGsFunc(ConverFun func);
     XsValue getValue(const DTK_CORE_NAMESPACE::DConfig& dconf);
@@ -26,12 +26,13 @@ public:
     XsValue   convertColorToStr(XsValue& value);
     QString   getDconfKey();
     QString   getXsetKey();
-    uint8_t   getKeySType();
+    int8_t   getKeySType();
+    int8_t   getKeyDType();
 private:
     QString             dconfKey;
     DconfValueType      dconfType;
     QString             xsKey;
-    uint8_t             xsType;
+    int8_t             xsType;
     ConverFun           convertGsToXs;
     ConverFun           convertXsToGs;
 };

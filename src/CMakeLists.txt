@@ -1,8 +1,13 @@
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+set(BIN_NAME "dde-xsettings")
+
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt5 REQUIRED COMPONENTS Core DBus)
+find_package(Qt5 REQUIRED COMPONENTS Core DBus Concurrent)
 find_package(DtkCore REQUIRED)
 find_package(PkgConfig REQUIRED)
 
@@ -13,7 +18,7 @@ pkg_check_modules(QGSettings REQUIRED IMPORTED_TARGET gsettings-qt)
 pkg_check_modules(Openssl REQUIRED IMPORTED_TARGET openssl)
 
 qt5_add_dbus_adaptor(ADAPTER_SOURCES
-                     ../dbus/com.deepin.XSettings.xml
+        ../dbus/org.deepin.dde.XSettings.xml
                      impl/xsettings1.h
                      XSettings1)
 set(SRCS
@@ -41,14 +46,15 @@ set(SRCS
     ./modules/common/common.h
 )
 
-add_executable(dde-xsetting
+add_executable(${BIN_NAME}
     ${SRCS}
     ${ADAPTER_SOURCES}
 )
 
-target_link_libraries(dde-xsetting
+target_link_libraries(${BIN_NAME}
     PkgConfig::Openssl
     Qt5::Core
+    Qt5::Concurrent
     Qt5::DBus
     PkgConfig::XCB
     PkgConfig::X11
@@ -56,4 +62,4 @@ target_link_libraries(dde-xsetting
     ${DtkCore_LIBRARIES}
     )
 
-install(TARGETS dde-xsetting DESTINATION bin)
+install(TARGETS ${BIN_NAME} DESTINATION bin)

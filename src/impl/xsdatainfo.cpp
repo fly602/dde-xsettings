@@ -30,7 +30,6 @@ void XSItemInfo::unMarshalXSItemInfoData(QByteArray& datas)
     int tempInt = 0;
     QString tempString = 0;
     ColorValueInfo tempColor;
-
     switch (head.type) {
     case HeadTypeInteger:
         Utils::readInteger(datas,tempInt);
@@ -44,10 +43,9 @@ void XSItemInfo::unMarshalXSItemInfoData(QByteArray& datas)
         value = tempString;
         break;
     case HeadTypeColor:
-        Utils::readInteger(datas,tempColor.red);
-        Utils::readInteger(datas,tempColor.green);
-        Utils::readInteger(datas,tempColor.blue);
-        Utils::readInteger(datas,tempColor.alpha);
+        for (int i = 0; i < colorSize;i++){
+            Utils::readInteger(datas,tempColor[i]);
+        }
         value = tempColor;
         break;
     default:
@@ -57,10 +55,46 @@ void XSItemInfo::unMarshalXSItemInfoData(QByteArray& datas)
     }
 }
 
-void XSItemInfo::marshalXSItemInfoData(QByteArray& datas)
-{
-    writeXSItemHeader(datas);
+QString xsValueToString(XsValue &value, uint type){
+    QString retStr;
+    int * iVal ;
+    QString * strVal ;
+    ColorValueInfo *color ;
+    switch (type) {
+        case HeadTypeInteger:
+            iVal = std::get_if<int>(&value);
+            if (iVal == nullptr) {
+                break;
+            }
+            retStr = QString::number(*iVal);
+            break;
+        case HeadTypeString:
+            strVal = std::get_if<QString>(&value);
+            if (strVal == nullptr) {
+                return "nullptr";
+            }
+            retStr =  *strVal;
+            break;
+        case HeadTypeColor:
+            color = std::get_if<ColorValueInfo>(&value);
+            if (color == nullptr) {
+                return "nullptr";
+            }
+            retStr = QString::asprintf("%d,%d,%d,%d",(*color)[0],(*color)[1],(*color)[2],(*color)[3]);
+            break;
+        default:
+            retStr = "unknown";
+            break;
+    }
+    return retStr;
+}
 
+bool XSItemInfo::marshalXSItemInfoData(QByteArray& datas)
+{
+    bool ret = false;
+    int length = 0;
+    QString *str = nullptr;
+    writeXSItemHeader(datas);
     switch (head.type) {
     case HeadTypeInteger:
         if(std::get_if<int>(&value) == nullptr)
@@ -68,16 +102,20 @@ void XSItemInfo::marshalXSItemInfoData(QByteArray& datas)
             break;
         }
         Utils::writeInteger(datas,std::get<int>(value));
+        ret = true;
         break;
     case HeadTypeString:
-        int length;
-        Utils::writeInteger(datas,length);
-        if(std::get_if<QString>(&value) == nullptr)
+        str = std::get_if<QString>(&value);
+        if(str == nullptr)
         {
             break;
         }
+        length = str->length();
+        Utils::writeInteger(datas,length);
+
         Utils::writeString(datas,std::get<QString>(value));
         Utils::writeSkip(datas,Utils::getPad(length));
+        ret = true;
         break;
     case HeadTypeColor:
         ColorValueInfo  *colorValue;
@@ -86,16 +124,16 @@ void XSItemInfo::marshalXSItemInfoData(QByteArray& datas)
         {
             break;
         }
-        Utils::writeInteger(datas,colorValue->red);
-        Utils::writeInteger(datas,colorValue->green);
-        Utils::writeInteger(datas,colorValue->blue);
-        Utils::writeInteger(datas,colorValue->alpha);
+        for (int i = 0;i < colorSize;i++){
+            Utils::writeInteger(datas,(*colorValue)[i]);
+        }
+        ret = true;
         break;
     default:
         //todo
-
         ;
     }
+    return ret;
 }
 
 void XSItemInfo::readXSItemHeader(QByteArray& datas)
@@ -184,7 +222,6 @@ void XSDataInfo::unMarshalSettingData(QByteArray& datas)
     Utils::readSkip(datas,3);
     Utils::readInteger(datas,serial);
     Utils::readInteger(datas,numSettings);
-
     for(uint32_t i=0;i<numSettings;i++)
     {
         QSharedPointer<XSItemInfo> info(new XSItemInfo(datas));
@@ -200,12 +237,13 @@ QByteArray XSDataInfo::marshalSettingData()
     Utils::writeSkip(array,3);
     Utils::writeInteger(array,serial);
     Utils::writeInteger(array,numSettings);
-
     for(auto item:items)
     {
-        item->marshalXSItemInfoData(array);
+        if (!item->marshalXSItemInfoData(array)) {
+            qWarning() << "marshal xsetting info failed";
+            return {};
+        }
     }
-
     return array;
 }
 

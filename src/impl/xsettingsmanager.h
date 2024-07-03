@@ -26,12 +26,13 @@ public:
     QString getString(const QString& prop);
     QString listProps();
     void setColor(const QString &prop, const ArrayOfColor &v);
-    void setInteger(const QString &prop, const qint32 &v);
+    void setInteger(const QString &prop, const int &v);
     void setScreenScaleFactors(const ScaleFactors &factors,bool emitSignal);
     void setString(const QString &prop, const QString &v);
 private:
     void updateDPI();
     void updateXResources();
+    void updateFirefoxDPI();
     XsValue getSettingValue(QString prop);
     void setSettings(QVector<XsSetting> settings);
     QVector<XsSetting> getSettingsInSchema();
@@ -47,6 +48,7 @@ private:
     void cleanUpDdeEnv();
     QMap<QString,QString> loadDDEUserEnv();
     void saveDDEUserEnv(const QMap<QString,QString>& userEnvs);
+    QByteArray getSettingPropValue();
 private:
     DTK_CORE_NAMESPACE::DConfig     settingDconfig;
     QSharedPointer<QDBusInterface>  greeterInterface;

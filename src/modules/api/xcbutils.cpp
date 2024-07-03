@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+bool xcb_debug = 1;
+
 XcbUtils& XcbUtils::getInstance()
 {
     static XcbUtils xcbUtils;
@@ -18,10 +20,24 @@ XcbUtils::XcbUtils(QObject *parent)
     :QObject(parent)
 {
     connection = xcb_connect(nullptr, nullptr);
+    if (!connection) {
+        qWarning() << "xcb connect failed";
+        exit(-1);
+    }
     window = createWindows();
+    if (window == XCB_WINDOW_NONE) {
+        qWarning() << "xcb invalid window";
+        exit(-1);
+    }
+    if (!isSelectionOwned("_XSETTINGS_S0")) {
+        qWarning()  << "owned _XSETTINGS_S0 failed";
+        exit(-1);
+    }
 }
 xcb_window_t XcbUtils::createWindows()
 {
+    xcb_void_cookie_t cookie;
+    xcb_generic_error_t *error;
     /* Get the first screen */
     const xcb_setup_t      *setup  = xcb_get_setup (connection);
     xcb_screen_iterator_t   iter   = xcb_setup_roots_iterator (setup);
@@ -29,16 +45,18 @@ xcb_window_t XcbUtils::createWindows()
 
     /* Create the window */
     xcb_window_t window = xcb_generate_id (connection);
-
+    if (window != XCB_WINDOW_NONE) {
+        qDebug() << "xcb generate window:" << window;
+    }
     xcb_create_window (connection,                    /* Connection          */
-                               XCB_COPY_FROM_PARENT,                    /* depth (same as root)*/
+                       XCB_COPY_FROM_PARENT,                    /* depth (same as root)*/
                                window,                        /* window Id           */
                                screen->root,                  /* parent window       */
                                0, 0,                          /* x, y                */
                                1, 1,                      /* width, height       */
                                0,                            /* border_width        */
                                XCB_WINDOW_CLASS_INPUT_OUTPUT, /* class               */
-                               screen->root_visual,           /* visual              */
+                       screen->root_visual,           /* visual              */
                                0, nullptr);                     /* masks, not used yet */
 
 
@@ -46,29 +64,43 @@ xcb_window_t XcbUtils::createWindows()
     xcb_map_window (connection, window);
     xcb_flush(connection);
     xcb_atom_t atom = getAtom("_XSETTINGS_S0");
+    if (atom == XCB_ATOM_NONE) {
+        qWarning() << "invalid atom";
+        return XCB_WINDOW_NONE;
+    }
 
     changeWindowPid(window);
 
-    xcb_set_selection_owner_checked(connection,window,atom,XCB_CURRENT_TIME);
-
+    cookie = xcb_set_selection_owner_checked(connection,window,atom,XCB_CURRENT_TIME);
+    // 检查错误
+    error = xcb_request_check(connection, cookie);
+    if (error) {
+        qWarning() << "xcb set selection owner failed: " << error->error_code;
+        return XCB_WINDOW_NONE;
+    }
     return window;
 }
 
 xcb_atom_t XcbUtils::getAtom(const char *name, bool exist)
 {
-    xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection,exist,strlen(name),name);
+    xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection,exist,strlen(name)+1,name);
 
     xcb_generic_error_t *err = nullptr;
     xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(connection,cookie,&err);
-    if(err != nullptr)
-    {
-        //todo
+    if (!reply) {
+        if (err != nullptr) {
+            fprintf(stderr, "get atom failed, errcode:%d\n",err->error_code);
+        } else {
+            fprintf(stderr, "get atom failed, unknown err.\n");
+        }
         return 0;
     }
 
     xcb_atom_t atom = reply->atom;
     free(reply);
-
+    if (xcb_debug) {
+        qDebug() << "xcb get atom [" << name << "]: " << atom;
+    }
     return atom;
 }
 
@@ -88,8 +120,14 @@ bool XcbUtils::changeWindowPid(xcb_window_t window)
    data[2] = int32_t(0xff & (pid >> 16));
    data[3] = int32_t(0xff & (pid >> 24));
 
-   xcb_change_property_checked(connection,XCB_PROP_MODE_REPLACE,window,atom,XCB_ATOM_CARDINAL,32,
+    xcb_void_cookie_t cookie = xcb_change_property_checked(connection,XCB_PROP_MODE_REPLACE,window,atom,XCB_ATOM_CARDINAL,32,
                                4, pidArray.toStdString().c_str());
+    // 检查错误
+    xcb_generic_error_t *error = xcb_request_check(connection, cookie);
+    if (error) {
+        qWarning() << "xcb change property failed:" <<  error->error_code;
+        return false;
+    }
 
    return true;
 }
@@ -115,83 +153,77 @@ bool XcbUtils::isSelectionOwned(QString prop)
     return true;
 }
 
-QByteArray XcbUtils::getSettingPropValue()
-{
-    QByteArray array;
-    xcb_atom_t atom =getAtom("_XSETTINGS_SETTINGS");
-    xcb_list_properties_cookie_t cookies1 = xcb_list_properties(connection,window);
-    xcb_list_properties_reply_t *reply = xcb_list_properties_reply(connection, cookies1, NULL);
+QByteArray XcbUtils::xcbPropertyReplyDataToArray(xcb_get_property_reply_t* reply){
+    QByteArray arr;
+    int length = xcb_get_property_value_length(reply);
+    uint8_t *prop_data = (uint8_t *)xcb_get_property_value(reply);
+    for (int i = 0; i < length; i++) {
+        arr.push_back(prop_data[i]);
+    }
+    return arr;
+}
 
+QString XcbUtils::getXcbAtomName(xcb_atom_t atom){
+    xcb_get_atom_name_cookie_t cookie;
+    xcb_get_atom_name_reply_t *reply;
 
-       int len = xcb_list_properties_atoms_length(reply);
-       xcb_atom_t *atoms = (xcb_atom_t *)xcb_list_properties_atoms(reply);
-        QVector<xcb_atom_t> root_window_properties;
-        root_window_properties.resize(len);
-         memcpy(root_window_properties.data(), atoms, len * sizeof(xcb_atom_t));
-//    xcb_get_property_cookie_t cookie = xcb_get_property(connection,0, window, atom,atom,0,10240);
+    cookie = xcb_get_atom_name(connection,atom);
+    reply = xcb_get_atom_name_reply(connection, cookie, NULL);
+    if (reply) {
+        return xcb_get_atom_name_name(reply);
+    }
+    return "";
+}
 
-//    xcb_generic_error_t *err = nullptr;
-//    xcb_get_property_reply_t* reply = xcb_get_property_reply(connection,cookie,&err);
-//    if(err != nullptr || reply == nullptr)
-//    {
-//        return array;
-//    }
-//    int length = xcb_get_property_value_length(reply);
-//    if(length == 0)
-//    {
-//        return array;
-//    }
-//    void *c= xcb_get_property_value(reply);
-//    char *value = static_cast<char*>(xcb_get_property_value(reply));
-
-//    for(int i=0;i<length;i++)
-//    {
-//        array.push_back(*value);
-//        value++;
-//    }
+// 获取 _XSETTINGS_SETTINGS 属性
+QByteArray XcbUtils::getXcbAtomProperty(xcb_atom_t atom) {
+    bool more = true;
     int offset = 0;
-            QByteArray settings;
-            while (1) {
-                xcb_get_property_cookie_t cookie = xcb_get_property(connection,
-                                                                    false,
-                                                                    4194304,
-                                                                    atom,
-                                                                    atom,
-                                                                    offset/4,
-                                                                    8192);
-
-                xcb_generic_error_t *error = nullptr;
-                auto reply = xcb_get_property_reply(connection, cookie, &error);
-
-
-                // 在窗口无效时，应当认为此native settings未初始化完成
-                if (error && error->error_code == 3) {
-
-                    return settings;
-                }
-
-                bool more = false;
-                if (!reply)
-                    return settings;
-
-                const auto property_value_length = xcb_get_property_value_length(reply);
-                settings.append(static_cast<const char *>(xcb_get_property_value(reply)), property_value_length);
-                offset += property_value_length;
-                more = reply->bytes_after != 0;
-                free(reply);
-
-                if (!more)
-                    break;
-            }
-
+    xcb_get_property_cookie_t cookie;
+    xcb_get_property_reply_t*  reply;
+    xcb_generic_error_t *error = nullptr;
+    QByteArray settings;
+    int i = 0;
+    while (more) {
+        i++;
+        cookie = xcb_get_property(
+                connection,
+                0,       // 删除属性为 0
+                window,    // 根窗口
+                atom,    // 要获取的 Atom
+                XCB_ATOM_NONE,
+                offset/4,       // 从 0 偏移量开始
+                UINT32_MAX // 获取尽可能多的数据
+        );
+        reply = xcb_get_property_reply(connection, cookie, &error);
+        // 在窗口无效时，应当认为此native settings未初始化完成
+        if (error && error->error_code == 3) {
+            return settings;
+        }
+        const auto property_value_length = xcb_get_property_value_length(reply);
+        settings.append(static_cast<const char *>(xcb_get_property_value(reply)), property_value_length);
+        offset += property_value_length;
+        more = reply->bytes_after != 0;
+        free(reply);
+    }
     return settings;
 }
 
 bool XcbUtils::changeSettingProp(QByteArray data)
 {
+    xcb_void_cookie_t cookie;
+    xcb_generic_error_t *err;
     xcb_atom_t atom = getAtom("_XSETTINGS_SETTINGS");
-
-    xcb_change_property_checked(connection,PropModeReplace,window,atom,atom,8,data.length(),data);
+    if (atom == 0) {
+        return false;
+    }
+    cookie = xcb_change_property_checked(connection,PropModeReplace,window,atom,atom,8,data.length(),data);
+    err = xcb_request_check(connection, cookie);
+    if (err) {
+        qWarning() << "xcb change setting prop failed," << err->error_code;
+        return false;
+    }
+    return true;
 }
 
 void XcbUtils::updateXResources(QVector<QPair<QString,QString>> xresourceInfos)

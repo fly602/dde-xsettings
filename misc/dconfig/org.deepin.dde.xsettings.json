@@ -122,7 +122,7 @@
             "permissions": "readwrite",
             "visibility": "private"
         },
-        "Gtk_Key_Theme_name": {
+        "Gtk_Key_Theme_Name": {
             "value": "Default",
             "serial": 0,
             "flags": [],
@@ -148,9 +148,7 @@
             "flags": [],
             "name": "Gtk_Recent_Files_Max_Age",
             "name[zh_CN]": "*****",
-            "description": "The maximum age, in days, of the items inside the recently used resources list.
-        Items older than this setting will be excised from the list.
-        If set to 0, the list will always be empty; if set to -1, no item will be removed.",
+            "description": "The maximum age, in days, of the items inside the recently used resources list.Items older than this setting will be excised from the list. If set to 0, the list will always be empty; if set to -1, no item will be removed.",
             "permissions": "readwrite",
             "visibility": "private"
         },
@@ -245,7 +243,7 @@
             "visibility": "private"
         },
         "Scale_Factor": {
-            "value": 1,
+            "value": 1.0,
             "serial": 0,
             "flags": [],
             "name": "Scale_Factor",
@@ -284,11 +282,11 @@
             "permissions": "readwrite",
             "visibility": "private"
         },
-        "Xft_Atialias": {
+        "Xft_Antialias": {
             "value": true,
             "serial": 0,
             "flags": [],
-            "name": "Xft_Atialias",
+            "name": "Xft_Antialias",
             "name[zh_CN]": "*****",
             "description": "Whether to antialias Xft fonts; 0=no, 1=yes, -1=default.",
             "permissions": "readwrite",
@@ -300,8 +298,7 @@
             "flags": [],
             "name": "Xft_Dpi",
             "name[zh_CN]": "*****",
-            "description": "Resolution for Xft, in 1024 * dots/inch. -1 to use default value.
-        Do not modify it manually.",
+            "description": "Resolution for Xft, in 1024 * dots/inch. -1 to use default value. Do not modify it manually.",
             "permissions": "readwrite",
             "visibility": "private"
         },

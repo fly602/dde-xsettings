@@ -1,5 +1,5 @@
 set(SYSTEMD_FILES
-    dde-xsetting.service
+    dde-xsettings.service
 )
 
 install(FILES ${SYSTEMD_FILES} DESTINATION /usr/lib/systemd/user/)

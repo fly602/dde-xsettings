@@ -106,8 +106,8 @@ QString Utils::getUserHomeDir()
 
 bool Utils::hasXsValue(const XsValue& value)
 {
-    if(!std::get_if<int>(&value) && !std::get_if<int>(&value)
-            &&!std::get_if<int>(&value) && !std::get_if<int>(&value))
+    if(!std::get_if<int>(&value) && !std::get_if<ColorValueInfo>(&value)
+            &&!std::get_if<double>(&value) && !std::get_if<QString>(&value))
         {
         return false;
     }

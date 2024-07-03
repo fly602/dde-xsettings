@@ -14,7 +14,7 @@ public:
     XSItemInfo(QByteArray& datas);
     XSItemInfo(const QString& prop, const XsValue& xsValue);
     void unMarshalXSItemInfoData(QByteArray& datas);
-    void marshalXSItemInfoData(QByteArray& datas);
+    bool marshalXSItemInfoData(QByteArray& datas);
     void readXSItemHeader(QByteArray& datas);
     void writeXSItemHeader(QByteArray& datas);
     QString getHeadName();
@@ -49,4 +49,5 @@ private:
     QVector<QSharedPointer<XSItemInfo>> items;
 };
 
+QString xsValueToString(XsValue &value, uint type);
 #endif // XSDATAINFO_H

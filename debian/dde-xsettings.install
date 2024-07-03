@@ -1,0 +1,4 @@
+/usr/bin/dde-xsettings
+/usr/lib/systemd/user/dde-xsettings.service
+/usr/share/dsg/configs/dde-xsettings/org.deepin.dde.xsettings.json
+/usr/share/dbus-1/services/org.deepin.dde.XSettings.service

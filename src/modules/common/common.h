@@ -3,11 +3,11 @@
 #include <QObject>
 #include <variant>
 
-#define gsKeyScaleFactor        "scale-factor"
-#define gsKeyWindowScale        "window-scale"
-#define gsKeyXftDpi             "xft-dpi"
-#define gsKeyGtkCursorThemeSize "gtk-cursor-theme-size"
-#define gsKeyIndividualScaling  "individual-scaling"
+#define dcKeyScaleFactor        "Scale_Factor"
+#define dcKeyWindowScale        "Window_Scale"
+#define dcKeyXftDpi             "Xft_Dpi"
+#define dcKeyGtkCursorThemeSize "Gtk_Cursor_Theme_Size"
+#define cKeyIndividualScaling  "Individual_Scaling"
 #define qtThemeSection                "Theme"
 #define	qtThemeKeyScreenScaleFactors  "ScreenScaleFactors"
 #define	qtThemeKeyScaleFactor         "ScaleFactor"
@@ -22,12 +22,15 @@ struct ItemHeader{
   uint32_t  lastChangeSerial;
 };
 
-struct ColorValueInfo{
-  uint16_t  red;
-  uint16_t  green;
-  uint16_t  blue;
-  uint16_t  alpha;
-};
+//struct ColorValueInfo{
+//  uint16_t  red;
+//  uint16_t  green;
+//  uint16_t  blue;
+//  uint16_t  alpha;
+//};
+
+constexpr size_t colorSize = 4;
+using ColorValueInfo = std::array<uint16_t,colorSize>;
 using XsValue = std::variant<int,double,QString,ColorValueInfo>;
 
 enum DconfValueType{
@@ -38,16 +41,14 @@ enum DconfValueType{
 };
 
 struct XsSetting{
-    uint8_t type;
+    int8_t type;
     QString prop;
     XsValue value;
 };
 
-const uint HeadTypeInvalid  =-1;
-const uint HeadTypeInteger  =0;
-const uint HeadTypeString   =1;
-const uint HeadTypeColor    =2;
-
-
+const int8_t HeadTypeInvalid  = -1;
+const int8_t HeadTypeInteger  =0;
+const int8_t HeadTypeString   =1;
+const int8_t HeadTypeColor    =2;
 
 #endif // COMMON_H

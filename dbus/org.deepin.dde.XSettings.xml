@@ -1,4 +1,4 @@
-<interface name="com.deepin.XSettings1">
+<interface name="org.deepin.dde.XSettings1">
     <method name="GetColor">
         <arg name="prop" type="s" direction="in"></arg>
         <arg name="outArg0" type="aq" direction="out"></arg>

@@ -1,0 +1,24 @@
+Source: dde-xsettings
+Section: unknown
+Priority: optional
+Maintainer: Deepin Packages Builder <packages@deepin.com>
+Build-Depends: debhelper (>= 13),
+ pkg-config,
+ cmake,
+ qtbase5-dev,
+ qttools5-dev-tools,
+ qttools5-dev
+Standards-Version: 4.6.0
+Homepage: https://github.com/linuxdeepin
+
+Package: dde-xsettings
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: dde-xsettings provide dbus settings for X.
+
+Package: dde-xsettings-dev
+Architecture: any
+Depends: ${shlibs:Depends},
+ ${misc:Depends},
+ dde-xsettings
+Description: dde-xsettings for development.

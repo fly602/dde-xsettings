@@ -1,4 +1,4 @@
-# dde-xsetting
+# dde-xsettings
 
 
-xsetting 服务
+xsettings 服务
